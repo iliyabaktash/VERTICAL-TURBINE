@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CFD of a Savonius Vertical-Axis Wind Turbine | Iliya Baktash</title>
+<meta name="description" content="CFD study of turbulence around a Savonius vertical-axis wind turbine, solved with the k-omega model and a moving reference frame in ANSYS Fluent — Iliya Baktash.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:ital,wght@0,500;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEF2F5;
+    --paper-card:#FFFFFF;
+    --ink:#16232F;
+    --ink-mid:#4A5C6E;
+    --ink-soft:#7A8A99;
+    --line:#C3CFD8;
+    --line-soft:#DAE2E8;
+    --navy-2:#1E4160;
+    --red:#C1400E;
+    --maxw:940px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'IBM Plex Mono', ui-monospace, monospace;
+    font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased;
+    background-image:linear-gradient(var(--line-soft) 1px, transparent 1px), linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size:28px 28px; background-position:-1px -1px;
+  }
+  h1,h2{ font-family:'Space Grotesk', sans-serif; margin:0; color:var(--ink); }
+  a{ color:var(--red); text-decoration:none; }
+  a:hover{ text-decoration:underline; }
+  p{ color:var(--ink-mid); max-width:70ch; }
+
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 24px; border-bottom:1px solid var(--line);
+    position:sticky; top:0; background:rgba(238,242,245,.92); backdrop-filter:blur(6px);
+  }
+  .mark{ font-family:'Space Grotesk', sans-serif; font-weight:600; color:var(--ink); font-size:1rem; }
+  .back-link{ font-size:.8rem; color:var(--ink-mid); border:1px solid var(--ink); padding:6px 12px; }
+  .back-link:hover{ color:var(--red); border-color:var(--red); text-decoration:none; }
+
+  main{ max-width:var(--maxw); margin:0 auto; padding:48px 24px 60px; }
+  .eyebrow{ color:var(--red); font-size:.8rem; letter-spacing:.05em; margin:0 0 10px; }
+  h1{ font-size:clamp(1.6rem,4.2vw,2.3rem); line-height:1.15; margin-bottom:10px; }
+  .meta{ font-size:.85rem; color:var(--ink-soft); margin:0 0 16px; }
+  .tags{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:26px; }
+  .tag{ font-size:.66rem; letter-spacing:.04em; border:1px solid var(--navy-2); color:var(--navy-2); padding:2px 6px; }
+  .underline{ width:80px; height:2px; background:var(--red); margin-bottom:22px; }
+  .summary{ font-size:.95rem; }
+
+  .part{ border-top:1px solid var(--line); padding-top:28px; margin-top:32px; }
+  .part-eyebrow{ font-size:.72rem; letter-spacing:.06em; color:var(--ink-soft); text-transform:uppercase; margin-bottom:8px; display:block; }
+  .part h2{ font-size:1.2rem; margin-bottom:14px; }
+  .part ul{ padding-left:18px; color:var(--ink-mid); font-size:.9rem; margin-bottom:18px; }
+  .part li{ margin-bottom:7px; }
+
+  .gallery-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+    gap:10px;
+  }
+  .gallery-thumb{
+    padding:0; margin:0; border:1px solid var(--line); background:var(--paper-card);
+    cursor:zoom-in; overflow:hidden; display:flex; flex-direction:column;
+  }
+  .gallery-thumb img{ width:100%; aspect-ratio:4/3; object-fit:contain; background:#fff; display:block; transition:transform .2s ease; }
+  .gallery-thumb:hover img{ transform:scale(1.04); }
+  .gallery-thumb .cap{ font-size:.72rem; color:var(--ink-soft); padding:7px 9px; border-top:1px solid var(--line-soft); text-align:left; }
+  .gallery-thumb:focus-visible{ outline:2px solid var(--red); outline-offset:2px; }
+
+  .lightbox{ position:fixed; inset:0; z-index:100; background:rgba(22,35,47,.94); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; }
+  .lightbox[hidden]{ display:none; }
+  .lightbox-img{ max-width:min(92vw,950px); max-height:74vh; object-fit:contain; border:1px solid rgba(234,241,244,.3); background:#fff; }
+  .lightbox-caption{ color:#EAF1F4; font-size:.82rem; margin-top:14px; text-align:center; max-width:70ch; }
+  .lightbox-close, .lightbox-nav{
+    position:fixed; background:none; border:1px solid rgba(234,241,244,.4); color:#EAF1F4;
+    font-family:'IBM Plex Mono', monospace; cursor:pointer; width:40px; height:40px;
+    display:flex; align-items:center; justify-content:center; font-size:1.2rem;
+  }
+  .lightbox-close:hover, .lightbox-nav:hover{ border-color:var(--red); color:var(--red); }
+  .lightbox-close{ top:18px; right:18px; }
+  .lightbox-prev{ left:18px; top:50%; transform:translateY(-50%); }
+  .lightbox-next{ right:18px; top:50%; transform:translateY(-50%); }
+  @media (max-width:560px){ .lightbox-prev{ left:6px; } .lightbox-next{ right:6px; } }
+
+  footer{
+    max-width:var(--maxw); margin:0 auto; padding:0 24px 50px;
+    font-size:.78rem; color:var(--ink-soft);
+    border-top:1px solid var(--line); padding-top:20px; margin-top:34px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="mark">Iliya Baktash</span>
+  <a class="back-link" href="https://iliyabaktash.ir/">&#8592; Back to résumé</a>
+</header>
+
+<main>
+  <p class="eyebrow">Research Note — RES&#8209;007 · Computational Fluid Dynamics</p>
+  <h1>CFD of a Savonius Vertical‑Axis Wind Turbine</h1>
+  <p class="meta">Computational Fluid Dynamics · Iran University of Science and Technology · ANSYS Fluent</p>
+  <div class="tags"><span class="tag">ANSYS Fluent</span><span class="tag">k‑ω Turbulence Model</span><span class="tag">Moving Reference Frame</span></div>
+  <div class="underline"></div>
+
+  <p class="summary">A 2D CFD study of the turbulent flow field around a rotating Savonius vertical‑axis wind turbine (VAWT), aimed at capturing the vortex shedding and wake structure that drive the turbine's torque. The rotor was modeled with a Moving Reference Frame (MRF) inside a larger stationary domain, and turbulence was closed with the k‑ω model.</p>
+
+  <div class="part">
+    <span class="part-eyebrow">Part 1</span>
+    <h2>Computational Domain &amp; Mesh</h2>
+    <ul>
+      <li>Built a rectangular far‑field domain with a circular rotating sub‑domain (MRF zone) enclosing the Savonius rotor</li>
+      <li>Generated an unstructured triangular mesh, refined sharply near the blade walls to resolve the boundary layer and shed vortices</li>
+      <li>Solved the flow as turbulent, unsteady, incompressible, using the k‑ω turbulence model with the rotor zone rotating via the Moving Reference Frame method</li>
+    </ul>
+    <div class="gallery-grid">
+      <button type="button" class="gallery-thumb" data-full="media/domain-sketch.png" data-caption="Computational domain — far-field box with the rotating MRF sub-domain around the turbine">
+        <img src="media/domain-sketch.png" alt="Computational domain sketch" loading="lazy">
+        <span class="cap">Computational domain (far-field + MRF zone)</span>
+      </button>
+      <button type="button" class="gallery-thumb" data-full="media/mesh-overview.png" data-caption="Unstructured triangular mesh, refined around the rotor region">
+        <img src="media/mesh-overview.png" alt="Mesh overview around the rotor" loading="lazy">
+        <span class="cap">Mesh overview — refined around rotor</span>
+      </button>
+      <button type="button" class="gallery-thumb" data-full="media/mesh-blade-detail.png" data-caption="Close-up of the boundary-layer mesh along a blade wall">
+        <img src="media/mesh-blade-detail.png" alt="Close-up mesh detail along the blade wall" loading="lazy">
+        <span class="cap">Blade wall — boundary-layer mesh detail</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="part">
+    <span class="part-eyebrow">Part 2</span>
+    <h2>Turbulence &amp; Wake Structure</h2>
+    <ul>
+      <li>Tracked vortex shedding from the advancing (upwind) blade as it interacts with the returning blade</li>
+      <li>Visualized the downwind wake, where the shed vortices merge into a narrow, high‑turbulence jet behind the rotor</li>
+      <li>Contours show turbulence kinetic energy across the domain, highlighting how blade rotation continuously regenerates the wake structure</li>
+    </ul>
+    <div class="gallery-grid">
+      <button type="button" class="gallery-thumb" data-full="media/contour-upwind.png" data-caption="Turbulence kinetic energy contour showing vortex shedding around the blades">
+        <img src="media/contour-upwind.png" alt="Turbulence contour around the rotor blades" loading="lazy">
+        <span class="cap">Vortex shedding around the rotor</span>
+      </button>
+      <button type="button" class="gallery-thumb" data-full="media/contour-wake.png" data-caption="Turbulence kinetic energy contour showing the downwind wake jet behind the turbine">
+        <img src="media/contour-wake.png" alt="Downwind wake contour behind the turbine" loading="lazy">
+        <span class="cap">Downwind wake behind the turbine</span>
+      </button>
+    </div>
+  </div>
+</main>
+
+<footer>
+  © <span id="year"></span> Iliya Baktash · <a href="mailto:Baktashiliya@gmail.com">Baktashiliya@gmail.com</a> · <a href="https://iliyabaktash.ir/">Full résumé →</a>
+</footer>
+
+<div class="lightbox" id="lightbox" hidden>
+  <button class="lightbox-close" id="lightboxClose" type="button" aria-label="Close photo">&times;</button>
+  <button class="lightbox-nav lightbox-prev" id="lightboxPrev" type="button" aria-label="Previous photo">&#8249;</button>
+  <img class="lightbox-img" id="lightboxImg" src="" alt="">
+  <button class="lightbox-nav lightbox-next" id="lightboxNext" type="button" aria-label="Next photo">&#8250;</button>
+  <p class="lightbox-caption" id="lightboxCaption"></p>
+</div>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  (function(){
+    var lightbox = document.getElementById('lightbox');
+    var lbImg = document.getElementById('lightboxImg');
+    var lbCap = document.getElementById('lightboxCaption');
+    var closeBtn = document.getElementById('lightboxClose');
+    var prevBtn = document.getElementById('lightboxPrev');
+    var nextBtn = document.getElementById('lightboxNext');
+    var group = [];
+    var index = 0;
+
+    function show(){
+      var btn = group[index];
+      var img = btn.querySelector('img');
+      lbImg.src = btn.getAttribute('data-full') || img.src;
+      lbImg.alt = img.alt || '';
+      lbCap.textContent = btn.getAttribute('data-caption') || '';
+    }
+    function openAt(g, i){
+      group = g; index = i;
+      show();
+      lightbox.hidden = false;
+      document.body.style.overflow = 'hidden';
+      closeBtn.focus();
+    }
+    function closeLB(){
+      lightbox.hidden = true;
+      document.body.style.overflow = '';
+    }
+    function next(){ index = (index + 1) % group.length; show(); }
+    function prev(){ index = (index - 1 + group.length) % group.length; show(); }
+
+    document.querySelectorAll('.gallery-grid').forEach(function(grid){
+      var thumbs = Array.prototype.slice.call(grid.querySelectorAll('.gallery-thumb'));
+      thumbs.forEach(function(btn, i){
+        btn.addEventListener('click', function(){ openAt(thumbs, i); });
+      });
+    });
+
+    closeBtn.addEventListener('click', closeLB);
+    nextBtn.addEventListener('click', next);
+    prevBtn.addEventListener('click', prev);
+    lightbox.addEventListener('click', function(e){ if(e.target === lightbox) closeLB(); });
+    document.addEventListener('keydown', function(e){
+      if(lightbox.hidden) return;
+      if(e.key === 'Escape') closeLB();
+      if(e.key === 'ArrowRight') next();
+      if(e.key === 'ArrowLeft') prev();
+    });
+  })();
+</script>
+
+</body>
+</html>
